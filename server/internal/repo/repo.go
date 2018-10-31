@@ -6,6 +6,6 @@ type IdentityRepository interface {
 	Save(*domain.Identity) <-chan error
 }
 
-type SesionRepository interface {
+type SessionRepository interface {
 	Save(*domain.Session) <-chan error
 }
