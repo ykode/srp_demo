@@ -77,7 +77,7 @@ func (s *Session) CurrentKey() []byte {
 }
 
 func (s *Session) GenerateKey(A *big.Int) error {
-	B := new(big.Int).Add(new(big.Int).Mul(k, s.v), new(big.Int).Exp(g, s.b, N))
+	B := new(big.Int)(new(big.Int).Add(new(big.Int).Mul(k, s.v), new(big.Int).Exp(g, s.b, N)), N)
 	u := calculateHashBigInt(A, B)
 	s.masterKey = new(big.Int).Exp(new(big.Int).Mul(A, new(big.Int).Exp(s.v, u, N)), s.b, N).Bytes()
 	return nil
