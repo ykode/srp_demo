@@ -31,8 +31,8 @@ var (
 
 const (
 	FACTOR    = 2
-	USERNAME  = "didiet"
-	PASSWORD  = "somepass"
+	USERNAME  = "some-user-name"
+	PASSWORD  = "some-weak-pass"
 	HKDF_INFO = "Demo App Key Generation"
 )
 

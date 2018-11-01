@@ -2,15 +2,34 @@ package domain
 
 import (
 	"errors"
+	"fmt"
+	"math/big"
 )
+
+type BigIntBytes []byte
+
+func (b BigIntBytes) String() string {
+	big := new(big.Int).SetBytes([]byte(b))
+
+	return fmt.Sprintf("0x%x", big)
+}
 
 type Identity struct {
 	userName string
-	salt     []byte
-	verifier []byte
+	salt     BigIntBytes
+	verifier BigIntBytes
+}
+
+func (id *Identity) String() string {
+	return fmt.Sprintf("userName: %s; salt: %s; verifier: %s")
 }
 
 func NewIdentity(username string, salt, verifier []byte) (*Identity, error) {
+
+	if len(username) == 0 {
+		return nil, errors.New("Username cannot be empty")
+	}
+
 	if len(username) < 8 {
 		return nil, errors.New("Username should be more than 8 characters.")
 	}

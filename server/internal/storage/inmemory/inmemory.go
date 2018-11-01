@@ -14,6 +14,12 @@ type InMemoryIdentityStorage struct {
 	lock sync.RWMutex
 }
 
+func NewInMemoryIdentityStorage() *InMemoryIdentityStorage {
+	return &InMemoryIdentityStorage{
+		identities: make(map[string]domain.Identity),
+	}
+}
+
 func (s *InMemoryIdentityStorage) FindIdentityByUserName(username string) <-chan query.Result {
 
 	queryFunc := func(uname string) (*domain.Identity, error) {
@@ -63,6 +69,12 @@ type InMemorySessionStorage struct {
 	sessions map[uuid.UUID]domain.Session
 
 	lock sync.RWMutex
+}
+
+func NewInMemorySessionStorage() *InMemorySessionStorage {
+	return &InMemorySessionStorage{
+		sessions: make(map[uuid.UUID]domain.Session),
+	}
 }
 
 func (s *InMemorySessionStorage) FindSessionbyId(id uuid.UUID) <-chan query.Result {

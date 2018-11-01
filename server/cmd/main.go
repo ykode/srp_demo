@@ -4,7 +4,8 @@ import (
 	"github.com/labstack/echo"
 	"github.com/labstack/echo/middleware"
 	log "github.com/sirupsen/logrus"
-	"net/http"
+
+	handlers "github.com/ykode/srp_demo/server/internal/handlers"
 )
 
 func main() {
@@ -15,11 +16,10 @@ func main() {
 	e.Use(middleware.Logger())
 	e.Use(middleware.Recover())
 
-	e.GET("/", hello)
+	identityHandlers := handlers.NewIdentityHandler()
+
+	idGroup := e.Group("identities")
+	identityHandlers.Mount(idGroup)
 
 	e.Logger.Fatal(e.Start(":4000"))
-}
-
-func hello(c echo.Context) error {
-	return c.String(http.StatusOK, "Hello, world!")
 }
