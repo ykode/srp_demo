@@ -7,7 +7,6 @@ import (
 	"github.com/ykode/srp_demo/server/internal/domain"
 	"github.com/ykode/srp_demo/server/internal/query"
 	"github.com/ykode/srp_demo/server/internal/repo"
-	storage "github.com/ykode/srp_demo/server/internal/storage/inmemory"
 	"net/http"
 )
 
@@ -16,17 +15,15 @@ type IdentityHandler struct {
 	query query.IdentityQuery
 }
 
-func NewIdentityHandler() *IdentityHandler {
-
-	storage := storage.NewInMemoryIdentityStorage()
-
+func NewIdentityHandler(idRepo repo.IdentityRepository, idQuery query.IdentityQuery) *IdentityHandler {
 	return &IdentityHandler{
-		repo:  storage,
-		query: storage,
+		repo:  idRepo,
+		query: idQuery,
 	}
 }
 
 func (h *IdentityHandler) Mount(g *echo.Group) {
+	g.POST("", h.RegisterIdentity)
 	g.POST("/", h.RegisterIdentity)
 }
 

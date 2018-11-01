@@ -20,8 +20,8 @@ type Identity struct {
 	verifier BigIntBytes
 }
 
-func (id *Identity) String() string {
-	return fmt.Sprintf("userName: %s; salt: %s; verifier: %s")
+func (id Identity) String() string {
+	return fmt.Sprintf("userName: %s; salt: %s; verifier: %s", id.userName, id.salt, id.verifier)
 }
 
 func NewIdentity(username string, salt, verifier []byte) (*Identity, error) {
@@ -58,14 +58,14 @@ func (id *Identity) ChangeUserName(newUserName string) error {
 	return nil
 }
 
-func (id *Identity) UserName() string {
+func (id Identity) UserName() string {
 	return id.userName
 }
 
-func (id *Identity) Salt() []byte {
+func (id Identity) Salt() []byte {
 	return id.salt
 }
 
-func (id *Identity) Verifier() []byte {
+func (id Identity) Verifier() []byte {
 	return id.verifier
 }
