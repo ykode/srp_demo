@@ -8,38 +8,38 @@ import (
 	"sync"
 )
 
+var (
+	ErrorNotFound = errors.New("Not Found")
+)
+
 type InMemoryIdentityStorage struct {
 	identities map[string]domain.Identity
 
-	lock sync.RWMutex
+	lock *sync.RWMutex
 }
 
 func NewInMemoryIdentityStorage() *InMemoryIdentityStorage {
 	return &InMemoryIdentityStorage{
 		identities: make(map[string]domain.Identity),
+		lock:       &sync.RWMutex{},
 	}
 }
 
 func (s *InMemoryIdentityStorage) FindIdentityByUserName(username string) <-chan query.Result {
-
-	queryFunc := func(uname string) (*domain.Identity, error) {
-		v, ok := s.identities[uname]
-		if !ok {
-			return nil, errors.New("Not Found")
-		}
-
-		return &v, nil
-	}
-
 	result := make(chan query.Result)
 
 	go func() {
+
 		s.lock.RLock()
 		defer s.lock.RUnlock()
 
-		v, err := queryFunc(username)
+		v, ok := s.identities[username]
 
-		result <- query.Result{Result: v, Err: err}
+		if !ok {
+			result <- query.Result{Err: ErrorNotFound}
+		} else {
+			result <- query.Result{Result: &v, Err: nil}
+		}
 
 		close(result)
 
@@ -68,12 +68,13 @@ func (s *InMemoryIdentityStorage) SaveIdentity(id *domain.Identity) <-chan error
 type InMemorySessionStorage struct {
 	sessions map[uuid.UUID]domain.Session
 
-	lock sync.RWMutex
+	lock *sync.RWMutex
 }
 
 func NewInMemorySessionStorage() *InMemorySessionStorage {
 	return &InMemorySessionStorage{
 		sessions: make(map[uuid.UUID]domain.Session),
+		lock:     &sync.RWMutex{},
 	}
 }
 

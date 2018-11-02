@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/base64"
+	"fmt"
 	"github.com/labstack/echo"
 	"github.com/ykode/srp_demo/server/internal/domain"
 	"github.com/ykode/srp_demo/server/internal/query"
@@ -72,7 +73,9 @@ func (h *SessionHandler) StartSession(c echo.Context) error {
 		return c.String(http.StatusBadRequest, "UserName cannot be empty")
 	}
 
+	fmt.Println(">>>>>>>>>>>>>>")
 	r := <-h.idQuery.FindIdentityByUserName(userName)
+	fmt.Println("<<<<<<<<<<<<<<")
 
 	if r.IsError() {
 		return c.String(http.StatusBadRequest, "UserName not found")
@@ -81,7 +84,7 @@ func (h *SessionHandler) StartSession(c echo.Context) error {
 	identity, ok := r.IdentityResult()
 
 	if !ok {
-		return c.String(http.StatusBadRequest, "False Identity")
+		return c.String(http.StatusBadRequest, r.Err.Error())
 	}
 
 	vb := identity.Verifier()
@@ -94,11 +97,7 @@ func (h *SessionHandler) StartSession(c echo.Context) error {
 		return c.String(http.StatusBadRequest, err.Error())
 	}
 
-	salt, err := extractBytesFromParam(c, "salt")
-
-	if err != nil {
-		return c.String(http.StatusBadRequest, err.Error())
-	}
+	salt := identity.Salt()
 
 	session, err := domain.NewSession(salt, v)
 
