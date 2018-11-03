@@ -2,7 +2,7 @@ package handlers
 
 import (
 	"encoding/base64"
-	"fmt"
+	"errors"
 	"github.com/labstack/echo"
 	"github.com/ykode/srp_demo/server/internal/domain"
 	"github.com/ykode/srp_demo/server/internal/query"
@@ -43,7 +43,7 @@ func extractBytesFromParam(c echo.Context, paramName string) ([]byte, error) {
 	b64 := c.FormValue(paramName)
 
 	if len(b64) == 0 {
-		return nil, c.String(http.StatusBadRequest, "Bad Value")
+		return nil, errors.New("Bad Value")
 	}
 
 	paramBytes, err := base64.StdEncoding.DecodeString(b64)
@@ -56,6 +56,7 @@ func extractBytesFromParam(c echo.Context, paramName string) ([]byte, error) {
 }
 
 func extractBigIntFromParam(c echo.Context, paramName string) (*big.Int, error) {
+
 	paramBytes, err := extractBytesFromParam(c, paramName)
 
 	if err != nil {
@@ -73,12 +74,10 @@ func (h *SessionHandler) StartSession(c echo.Context) error {
 		return c.String(http.StatusBadRequest, "UserName cannot be empty")
 	}
 
-	fmt.Println(">>>>>>>>>>>>>>")
 	r := <-h.idQuery.FindIdentityByUserName(userName)
-	fmt.Println("<<<<<<<<<<<<<<")
 
 	if r.IsError() {
-		return c.String(http.StatusBadRequest, "UserName not found")
+		return c.String(http.StatusBadRequest, r.Err.Error())
 	}
 
 	identity, ok := r.IdentityResult()
@@ -97,15 +96,17 @@ func (h *SessionHandler) StartSession(c echo.Context) error {
 		return c.String(http.StatusBadRequest, err.Error())
 	}
 
-	salt := identity.Salt()
-
-	session, err := domain.NewSession(salt, v)
+	session, err := domain.NewSession(v)
 
 	if err != nil {
 		return c.String(http.StatusBadRequest, err.Error())
 	}
 
-	session.GenerateKey(A)
+	err = session.GenerateKey(A)
+
+	if err != nil {
+		return c.String(http.StatusBadRequest, err.Error())
+	}
 
 	err = <-h.repo.SaveSession(session)
 
@@ -113,7 +114,8 @@ func (h *SessionHandler) StartSession(c echo.Context) error {
 		return c.String(http.StatusBadRequest, err.Error())
 	}
 
-	return c.JSON(http.StatusCreated, SessionPayload(*session))
+	return c.JSON(http.StatusCreated, SessionPayload{session: session, salt: identity.Salt()})
+
 }
 
 func (h *SessionHandler) AnswerChallenge(c echo.Context) error {

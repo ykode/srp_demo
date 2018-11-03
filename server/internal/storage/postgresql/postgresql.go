@@ -8,6 +8,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/ykode/srp_demo/server/internal/domain"
 	"github.com/ykode/srp_demo/server/internal/query"
+	"math/big"
 )
 
 type SSLMode string
@@ -29,8 +30,8 @@ func NewPostgreSQLStorage(host, username, password, dbname string, port int, ssl
 		"topic": "postgresql",
 	})
 
-	connStr := fmt.Sprintf("user=%s password=%s, dbname=%s host=%s port=%d sslmode=%s",
-		username, password, dbname, host, port, sslmode)
+	connStr := fmt.Sprintf("user=%s password=%s host=%s port=%d dbname=%s sslmode=%s",
+		username, password, host, port, dbname, sslmode)
 
 	db, err := sql.Open("postgres", connStr)
 
@@ -48,7 +49,7 @@ func NewPostgreSQLStorage(host, username, password, dbname string, port int, ssl
 }
 
 func (s *PostgreSQLStorage) _findIdentityByUserName(username string) (*domain.Identity, error) {
-	q := `SELECT "username", "salt", "verifier" FROM identities WHERE username=$1`
+	const q = `SELECT "username", "salt", "verifier" FROM identities WHERE username=$1`
 
 	var rows *sql.Rows
 	var err error
@@ -66,7 +67,7 @@ func (s *PostgreSQLStorage) _findIdentityByUserName(username string) (*domain.Id
 	var uname string
 	var salt, verifier []byte
 
-	if err = rows.Scan(&username, &salt, &verifier); err != nil {
+	if err = rows.Scan(&uname, &salt, &verifier); err != nil {
 		return nil, err
 	}
 
@@ -81,11 +82,10 @@ func (s *PostgreSQLStorage) _findIdentityByUserName(username string) (*domain.Id
 }
 
 func (s *PostgreSQLStorage) _saveIdentity(id *domain.Identity) error {
-	q := `INSERT INTO identites(username, salt, verifier) VALUES ($1, $2, $3)
-				ON CONFLICT(username) DO
-				UPDATE identities SET username = $1, salt = $2, verifier = $3`
-
-	if _, err := s.db.Exec(q); err != nil {
+	const q = `INSERT INTO "identities" ("username", "salt", "verifier") VALUES ($1, $2, $3)
+				ON CONFLICT("username")
+				DO UPDATE SET "username"=$1, salt=$2, verifier=$3`
+	if _, err := s.db.Exec(q, id.UserName(), id.Salt(), id.Verifier()); err != nil {
 		return err
 	}
 
@@ -93,7 +93,7 @@ func (s *PostgreSQLStorage) _saveIdentity(id *domain.Identity) error {
 }
 
 func (s *PostgreSQLStorage) _findSessionById(sessionId uuid.UUID) (*domain.Session, error) {
-	q := `SELECT "id", "salt", "master_key", "state", "v" FROM sessions WHERE "id" = $1`
+	const q = `SELECT "id", "master_key", "state", "v", "A", "b" FROM sessions WHERE "id" = $1`
 
 	var rows *sql.Rows
 	var err error
@@ -109,28 +109,39 @@ func (s *PostgreSQLStorage) _findSessionById(sessionId uuid.UUID) (*domain.Sessi
 	}
 
 	var id uuid.UUID
-	var salt, masterKey, v []byte
+	var masterKey, vBytes, ABytes, bBytes []byte
 	var state domain.SessionState
 
-	if err = rows.Scan(&id, &salt, &masterKey, &state); err != nil {
+	if err = rows.Scan(&id, &masterKey, &state, &ABytes, &bBytes); err != nil {
 		return nil, err
 	}
 
 	var session *domain.Session
+	v := new(big.Int).SetBytes(vBytes)
+	b := new(big.Int).SetBytes(bBytes)
 
-	if session, err = domain.BuildSession(id, salt, masterKey, v, state); err != nil {
+	var A *big.Int
+
+	if len(ABytes) != 0 {
+		A = new(big.Int).SetBytes(ABytes)
+	}
+
+	if session, err = domain.BuildSession(id, masterKey, v, b, A, state); err != nil {
 		return nil, err
 	}
 
 	return session, nil
 }
 
-func (s *PostgreSQLStorage) _saveSession(*domain.Session) error {
-	q := `INSERT INTO sessions("id", "salt", "master_key", "state", "v")( $1, $2, $3, $4, $5)
-				ON CONFLICT("id")
-				UPDATE sessions SET "id" = $1, "salt" = $2, "master_key" = $3, "state" = $4, "v" = $5)`
+func (s *PostgreSQLStorage) _saveSession(session *domain.Session) error {
+	const q = `INSERT INTO sessions("id", "master_key", "state", "v", "A", "b") VALUES ($1, $2, $3, $4, $5, $6)
+				ON CONFLICT("id") DO
+				UPDATE SET "id" = $1, "master_key" = $2, "state" = $3, "v" = $4, "A" = $5, "b" = $6`
 
-	if _, err := s.db.Exec(q); err != nil {
+	_, err := s.db.Exec(q, session.ID(), session.MasterKey(), session.State(),
+		session.V().Bytes(), session.A().Bytes(), session.SmallB().Bytes())
+
+	if err != nil {
 		return err
 	}
 

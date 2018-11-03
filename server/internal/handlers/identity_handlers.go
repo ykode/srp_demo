@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"encoding/base64"
-	"fmt"
 	"github.com/labstack/echo"
 	"github.com/ykode/srp_demo/server/internal/domain"
 	"github.com/ykode/srp_demo/server/internal/query"
@@ -50,9 +49,8 @@ func (h *IdentityHandler) RegisterIdentity(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 	}
 
-	h.repo.SaveIdentity(id)
-
-	fmt.Printf("Storage: \n%+v\n", h.repo)
-
+	if err := <-h.repo.SaveIdentity(id); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+	}
 	return c.String(http.StatusCreated, "Created")
 }

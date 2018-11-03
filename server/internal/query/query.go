@@ -20,15 +20,15 @@ func (r *Result) IsError() bool {
 }
 
 func (r *Result) IdentityResult() (*domain.Identity, bool) {
-	v, ok := r.Result.(domain.Identity)
+	v, ok := r.Result.(*domain.Identity)
 
-	return &v, ok
+	return v, ok
 }
 
 func (r *Result) SessionResult() (*domain.Session, bool) {
-	v, ok := r.Result.(domain.Session)
+	v, ok := r.Result.(*domain.Session)
 
-	return &v, ok
+	return v, ok
 }
 
 type QueryFunc = func(...interface{}) (interface{}, error)
