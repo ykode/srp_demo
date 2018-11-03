@@ -19,8 +19,7 @@ type Session struct {
 	id        uuid.UUID
 	salt      []byte
 	masterKey []byte
-
-	state SessionState
+	state     SessionState
 
 	b *big.Int
 	v *big.Int
