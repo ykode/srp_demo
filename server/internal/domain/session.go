@@ -48,6 +48,16 @@ func BuildSession(id uuid.UUID, masterKey []byte, v, b, A *big.Int, state Sessio
 
 	B := new(big.Int).Mod(new(big.Int).Add(new(big.Int).Mul(k, v), new(big.Int).Exp(g, b, N)), N)
 
+	u := calculateHashBigInt(A, B)
+
+	var keys [4]*big.Int
+
+	keysBytes := hkdfFromKey(u.Bytes(), masterKey, 4)
+
+	for i := 0; i < 4; i += 1 {
+		keys[i] = new(big.Int).SetBytes(keysBytes[i])
+	}
+
 	return &Session{
 		id:        id,
 		masterKey: masterKey,
@@ -56,6 +66,7 @@ func BuildSession(id uuid.UUID, masterKey []byte, v, b, A *big.Int, state Sessio
 		_B:        B,
 		v:         v,
 		_A:        A,
+		keys:      keys,
 	}, nil
 }
 
@@ -141,6 +152,7 @@ func (s *Session) VerifyClient(M1_c *big.Int) (*big.Int, bool) {
 	if eq := M1_s.Cmp(M1_c) == 0; !eq {
 		return nil, false
 	} else {
+		s.state = SessionStateCompleted
 		return calculateHashBigInt(s.keys[0], new(big.Int).Exp(s._A, M1_c, N)), eq
 	}
 }

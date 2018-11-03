@@ -112,7 +112,7 @@ func (s *PostgreSQLStorage) _findSessionById(sessionId uuid.UUID) (*domain.Sessi
 	var masterKey, vBytes, ABytes, bBytes []byte
 	var state domain.SessionState
 
-	if err = rows.Scan(&id, &masterKey, &state, &ABytes, &bBytes); err != nil {
+	if err = rows.Scan(&id, &masterKey, &state, &vBytes, &ABytes, &bBytes); err != nil {
 		return nil, err
 	}
 

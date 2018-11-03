@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"github.com/google/uuid"
 	"github.com/ykode/srp_demo/server/internal/domain"
+	"math/big"
 )
 
 type SessionPayload struct {
@@ -26,6 +27,26 @@ func (s SessionPayload) MarshalJSON() ([]byte, error) {
 		B:         B,
 		SessionID: id,
 		Salt:      salt,
+	}
+
+	return json.Marshal(j)
+}
+
+type SessionAnswer struct {
+	session *domain.Session
+	m_s     *big.Int
+}
+
+func (s SessionAnswer) MarshalJSON() ([]byte, error) {
+	id := s.session.ID()
+	m_s := base64.StdEncoding.EncodeToString(s.m_s.Bytes())
+
+	j := struct {
+		SessionID uuid.UUID `json:"session_id"`
+		M_s       string    `json:"M_s"`
+	}{
+		SessionID: id,
+		M_s:       m_s,
 	}
 
 	return json.Marshal(j)

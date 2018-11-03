@@ -3,6 +3,7 @@ package handlers
 import (
 	"encoding/base64"
 	"errors"
+	"github.com/google/uuid"
 	"github.com/labstack/echo"
 	"github.com/ykode/srp_demo/server/internal/domain"
 	"github.com/ykode/srp_demo/server/internal/query"
@@ -83,7 +84,7 @@ func (h *SessionHandler) StartSession(c echo.Context) error {
 	identity, ok := r.IdentityResult()
 
 	if !ok {
-		return c.String(http.StatusBadRequest, r.Err.Error())
+		return c.String(http.StatusBadRequest, "Error Identity Type")
 	}
 
 	vb := identity.Verifier()
@@ -119,7 +120,54 @@ func (h *SessionHandler) StartSession(c echo.Context) error {
 }
 
 func (h *SessionHandler) AnswerChallenge(c echo.Context) error {
-	return nil
+	sessionIdStr := c.FormValue("session_id")
+	mClientStr := c.FormValue("m_client")
+
+	if len(sessionIdStr) == 0 {
+		return c.String(http.StatusBadRequest, "Session Id cannot be empty")
+	}
+
+	if len(mClientStr) == 0 {
+		return c.String(http.StatusBadRequest, "Client Verifier cannot be empty")
+	}
+
+	sessionId, err := uuid.Parse(sessionIdStr)
+
+	if err != nil {
+		return c.String(http.StatusBadRequest, "Session Error Parse")
+	}
+
+	r := <-h.query.FindSessionById(sessionId)
+
+	if r.IsError() {
+		return c.String(http.StatusBadRequest, r.Err.Error())
+	}
+
+	session, ok := r.SessionResult()
+
+	if !ok {
+		return c.String(http.StatusBadRequest, "Error System Type")
+	}
+
+	M_c, err := extractBigIntFromParam(c, "m_client")
+
+	if err != nil {
+		return c.String(http.StatusBadRequest, err.Error())
+	}
+
+	M_s, ok := session.VerifyClient(M_c)
+
+	if !ok {
+		return c.String(http.StatusUnauthorized, "Client Verification Failed")
+	}
+
+	err = <-h.repo.SaveSession(session)
+
+	if err != nil {
+		return c.String(http.StatusBadRequest, err.Error())
+	}
+
+	return c.JSON(http.StatusOK, SessionAnswer{session: session, m_s: M_s})
 }
 
 func (h *SessionHandler) HandleSession(c echo.Context) error {
