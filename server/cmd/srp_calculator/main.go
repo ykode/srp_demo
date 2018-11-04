@@ -79,6 +79,8 @@ func hkdfFromKey(salt []byte, ikm []byte, iteration int) [][]byte {
 func main() {
 	reader := bufio.NewReader(os.Stdin)
 
+	fmt.Printf("N (hex) : 0x%x\nN(base64): %s\n", N, base64.StdEncoding.EncodeToString(N.Bytes()))
+
 	fmt.Print("Username:")
 	username, _ := reader.ReadString('\n')
 
