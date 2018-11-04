@@ -148,7 +148,15 @@ func (s *Session) GenerateKey(A *big.Int) error {
 }
 
 func (s *Session) VerifyClient(M1_c *big.Int) (*big.Int, bool) {
+
 	M1_s := calculateHashBigInt(s.keys[0], new(big.Int).Exp(s._A, s._B, N))
+	/*
+		fmt.Printf("v: 0x%x\nA:%s\nB:%s\nS_s: 0x%x\nK1_s: 0x%x\nM1_s: %s",
+			s.v,
+			base64.StdEncoding.EncodeToString(s._A.Bytes()),
+			base64.StdEncoding.EncodeToString(s._B.Bytes()),
+			s.masterKey, s.keys[0], base64.StdEncoding.EncodeToString(M1_s.Bytes()))
+	*/
 	if eq := M1_s.Cmp(M1_c) == 0; !eq {
 		return nil, false
 	} else {
