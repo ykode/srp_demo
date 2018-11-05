@@ -12,6 +12,8 @@ import 'login_service.dart';
 List<int> computeHKDF(List<int> ikm, List<int> salt) {
   final hmac1 = new Hmac(sha256, salt);
   final prk = hmac1.convert(ikm);
+
+  print(base64.encode(prk.bytes));
   final hmac2 = new Hmac(sha256, prk.bytes);
   final dig = hmac2.convert(utf8.encode(keyinfo) + [1]);
   return dig.bytes.sublist(0, 16);
@@ -58,8 +60,12 @@ class AppComponent {
     final S_c = modPow(B - _loginService.k * modPow(BigInt.two, x, LoginService.N), 
         _loginService.a + u * x, LoginService.N);
 
+    print(S_c.toRadixString(16));
+
     final K_c_bytes = computeHKDF(encodeBigInt(S_c), encodeBigInt(u));
     final K_c = decodeBigInt(K_c_bytes);
+
+    print(K_c.toRadixString(16));
     final hasher_M = new Hmac(sha256, K_c_bytes);
     final M1_c_bytes = hasher_M.convert(encodeBigInt(modPow(_loginService.A, B, LoginService.N))).bytes;
 

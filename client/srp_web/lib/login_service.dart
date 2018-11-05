@@ -174,7 +174,7 @@ class LoginService {
 
     print(params);
 
-     final uri = Uri.parse("http://localhost:4000/sessions/");
+    final uri = Uri.parse("http://localhost:4000/sessions/");
 
     final request = new http.Request("POST", uri);
 

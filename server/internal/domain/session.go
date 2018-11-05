@@ -2,7 +2,9 @@ package domain
 
 import (
 	"crypto/sha256"
+	"encoding/base64"
 	"errors"
+	"fmt"
 	"github.com/google/uuid"
 	"golang.org/x/crypto/hkdf"
 	"io"
@@ -32,12 +34,17 @@ const keyinfo = "SRP Demo Key Information"
 const bitlen = 1024
 
 func hkdfFromKey(salt []byte, ikm []byte, iteration int) [][]byte {
+
+	extractor := hkdf.Extract(sha256.New, ikm, salt)
+	fmt.Printf("Extractor: %s\n", base64.StdEncoding.EncodeToString(extractor))
+
 	hkdf := hkdf.New(sha256.New, ikm, salt, []byte(keyinfo))
 	okm := make([]byte, 16)
 	out := make([][]byte, iteration)
 
 	for i := 0; i < iteration; i += 1 {
 		io.ReadFull(hkdf, okm)
+		fmt.Printf("K[%d]: 0x%x\n", i, new(big.Int).SetBytes(okm))
 		out[i] = okm
 	}
 
@@ -135,7 +142,9 @@ func (s *Session) GenerateKey(A *big.Int) error {
 
 	B := s._B
 	u := calculateHashBigInt(A, B)
-	s.masterKey = new(big.Int).Exp(new(big.Int).Mul(A, new(big.Int).Exp(s.v, u, N)), s.b, N).Bytes()
+	S_s := new(big.Int).Exp(new(big.Int).Mul(A, new(big.Int).Exp(s.v, u, N)), s.b, N)
+	fmt.Printf("S_s: 0x%x\n", S_s)
+	s.masterKey = S_s.Bytes()
 
 	keys := hkdfFromKey(u.Bytes(), s.masterKey, len(s.keys))
 
