@@ -42,8 +42,6 @@ BigInt modPow(BigInt b, BigInt e, BigInt m) => e < BigInt.one
     ? BigInt.one
     : (b < BigInt.zero || b > m ? (b % m) : b).modPow(e, m);
 
-
-
 class LoginService {
   static final _N = BigInt.parse(_N_HEX, radix: 16);
   static final g = BigInt.two;
@@ -51,7 +49,6 @@ class LoginService {
   static final secureRandom = new Random.secure();
   final _serializers =
       (serializers.toBuilder()..addPlugin(new StandardJsonPlugin())).build();
-  
 
   final BigInt k;
   final BigInt a;
@@ -69,7 +66,7 @@ class LoginService {
 
   static BigInt randomBigInt(int bitLength) =>
       bytes2BigInt(randomBytes(bitLength >> 3)) % _N;
- 
+
   factory LoginService() {
     final hmacSha256 = new Hmac(sha256, [2]);
     final kDigest = hmacSha256.convert(hex.decode(_N_HEX));
@@ -79,7 +76,36 @@ class LoginService {
     if (A % _N == BigInt.zero) {
       throw new Exception("Illegal parameter, A mod N cannot be 0");
     }
-    return new LoginService._init(bytes2BigInt(kBytes), a, A, utf8.encode(keyinfo));
+    return new LoginService._init(
+        bytes2BigInt(kBytes), a, A, utf8.encode(keyinfo));
+  }
+
+  Future<Null> registerUser(String userName, String password) async {
+    final salt = randomBytes(16);
+    final hmacSha256 = new Hmac(sha256, salt);
+    final xBytes = hmacSha256.convert(salt).bytes;
+    final x = bytes2BigInt(xBytes);
+    final v = modPow(g, x, _N);
+    final vBase64 = base64.encode(hex.decode(v.toRadixString(16)));
+    final saltBase64 = base64.encode(salt);
+
+    final params = {
+      "user_name": userName,
+      "v": vBase64,
+      "salt": saltBase64,
+    };
+
+    final uri = Uri.parse("http://localhost:4000/identities/");
+
+    final request = new http.Request("POST", uri);
+
+    request.headers['content-type'] = 'application/x-www-form-urlencoded';
+    request.bodyFields = params;
+
+    final response = await _client.send(request);
+    if (201 != response.statusCode) {
+      throw new HttpException("Cannot create user", uri: uri);
+    } 
   }
 
   Future<Session> startSession(String userName) async {
@@ -88,12 +114,12 @@ class LoginService {
     final A_base64 = base64.encode(A_bytes);
 
     final params = {
-      "action":"start_session",
-      "user_name":userName,
-      "A":A_base64,
+      "action": "start_session",
+      "user_name": userName,
+      "A": A_base64,
     };
 
-    final uri =  Uri.parse("http://localhost:4000/sessions/");
+    final uri = Uri.parse("http://localhost:4000/sessions/");
 
     final request = new http.Request("POST", uri);
 
@@ -101,18 +127,16 @@ class LoginService {
     request.bodyFields = params;
 
     final response = await _client.send(request);
-    final decodeMap = await response
-        .stream
+    final decodeMap = await response.stream
         .transform(utf8.decoder)
         .transform(json.decoder)
         .cast<Map<String, dynamic>>()
         .single;
-    if (200 != response.statusCode) {
-      throw new HttpException("Cannot start session", uri:uri);
-    }else {
+    if (201 != response.statusCode) {
+      throw new HttpException("Cannot start session", uri: uri);
+    } else {
       return _serializers.deserialize(decodeMap,
           specifiedType: const FullType(Session));
     }
-    
   }
 }
