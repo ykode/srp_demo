@@ -60,7 +60,7 @@ BigInt modPow(BigInt b, BigInt e, BigInt m) => e < BigInt.one
     : (b < BigInt.zero || b > m ? (b % m) : b).modPow(e, m);
 
 class LoginService {
-  static final _N = decodeBigInt(_N_BYTES);
+  static final N = decodeBigInt(_N_BYTES);
   static final g = BigInt.two;
   static const _MAX_RANDOM_BIT_LENGTH = 1024;
   static final secureRandom = new Random.secure();
@@ -84,15 +84,15 @@ class LoginService {
       new List.generate(length, (_) => secureRandom.nextInt(254) + 1);
 
   static BigInt randomBigInt(int bitLength) =>
-      decodeBigInt(randomBytes(bitLength >> 3)) % _N;
+      decodeBigInt(randomBytes(bitLength >> 3)) % N;
 
   factory LoginService() {
     final hmacSha256 = new Hmac(sha256, [2]);
     final kDigest = hmacSha256.convert(_N_BYTES);
     final kBytes = kDigest.bytes;
     final a = randomBigInt(_MAX_RANDOM_BIT_LENGTH);
-    final A = modPow(g, a, _N);
-    if (A % _N == BigInt.zero) {
+    final A = modPow(g, a, N);
+    if (A % N == BigInt.zero) {
       throw new Exception("Illegal parameter, A mod N cannot be 0");
     }
     return new LoginService._init(
@@ -105,7 +105,7 @@ class LoginService {
     final identity = utf8.encode("$userName:$password");
     final xBytes = hmacSha256.convert(identity).bytes;
     final x = decodeBigInt(xBytes);
-    final v = modPow(g, x, _N);
+    final v = modPow(g, x, N);
     final vBase64 = base64.encode(encodeBigInt(v));
     final saltBase64 = base64.encode(salt);
 
@@ -160,6 +160,39 @@ class LoginService {
     } else {
       return _serializers.deserialize(decodeMap,
           specifiedType: const FullType(Session));
+    }
+  }
+
+  Future<ChallengeAnswer> answerChallenge(Session s, BigInt mClient) async {
+    final String M_c = base64.encode(encodeBigInt(mClient));
+
+    final params = {
+      "action":"answer",
+      "session_id":s.sessionId,
+      "m_client": M_c,
+    };
+
+    print(params);
+
+     final uri = Uri.parse("http://localhost:4000/sessions/");
+
+    final request = new http.Request("POST", uri);
+
+    request.headers['content-type'] = 'application/x-www-form-urlencoded';
+    request.bodyFields = params;
+
+    final response = await _client.send(request);
+    final decodeMap = await response.stream
+        .transform(utf8.decoder)
+        .transform(json.decoder)
+        .cast<Map<String, dynamic>>()
+        .single;
+
+    if (200 != response.statusCode) {
+      throw new HttpException("Unauthorized", uri:uri);
+    } else {
+      return _serializers.deserialize(decodeMap,
+          specifiedType: const FullType(ChallengeAnswer));
     }
   }
 }
