@@ -18,24 +18,30 @@ const keyinfo = "SRP Demo Key Information";
 
 final _bigIntFF = new BigInt.from(0xff);
 
-BigInt bytes2BigInt(List<int> bytes) {
-  var number = BigInt.zero;
-  for (var i = 0; i < bytes.length; i++) {
-    number = (number << 8) | new BigInt.from(bytes[i]);
+BigInt decodeBigInt(List<int> bytes) {
+  var result = BigInt.zero;
+  for (int i = 0; i < bytes.length; i++) {
+    result += new BigInt.from(bytes[bytes.length - i - 1]) << (8 * i);
   }
-  return number;
+  return result;
 }
 
-List<int> integer2Bytes(BigInt integer, int intendedLength) {
-  if (integer < BigInt.one) {
-    throw new ArgumentError('Only positive integers are supported.');
+var _byteMask = new BigInt.from(0xff);
+
+/// Encode a BigInt into bytes using big-endian encoding.
+Uint8List encodeBigInt(BigInt number) {
+
+  if (number < BigInt.zero) {
+    throw new RangeError("Cannot encode negative BigInt number");
   }
-  var bytes = new Uint8List(intendedLength);
-  for (int i = bytes.length - 1; i >= 0; i--) {
-    bytes[i] = (integer & _bigIntFF).toInt();
-    integer >>= 8;
+
+  final size = (number.bitLength + 7) >> 3;
+  var result = new Uint8List(size);
+  for (int i = 0; i < size; i++) {
+    result[size - i - 1] = (number & _byteMask).toInt();
+    number = number >> 8;
   }
-  return bytes;
+  return result;
 }
 
 BigInt modPow(BigInt b, BigInt e, BigInt m) => e < BigInt.one
@@ -65,7 +71,7 @@ class LoginService {
       new List.generate(length, (_) => secureRandom.nextInt(254) + 1);
 
   static BigInt randomBigInt(int bitLength) =>
-      bytes2BigInt(randomBytes(bitLength >> 3)) % _N;
+      decodeBigInt(randomBytes(bitLength >> 3)) % _N;
 
   factory LoginService() {
     final hmacSha256 = new Hmac(sha256, [2]);
@@ -77,16 +83,16 @@ class LoginService {
       throw new Exception("Illegal parameter, A mod N cannot be 0");
     }
     return new LoginService._init(
-        bytes2BigInt(kBytes), a, A, utf8.encode(keyinfo));
+        decodeBigInt(kBytes), a, A, utf8.encode(keyinfo));
   }
 
   Future<Null> registerUser(String userName, String password) async {
     final salt = randomBytes(16);
     final hmacSha256 = new Hmac(sha256, salt);
     final xBytes = hmacSha256.convert(salt).bytes;
-    final x = bytes2BigInt(xBytes);
+    final x = decodeBigInt(xBytes);
     final v = modPow(g, x, _N);
-    final vBase64 = base64.encode(hex.decode(v.toRadixString(16)));
+    final vBase64 = base64.encode(encodeBigInt(v));
     final saltBase64 = base64.encode(salt);
 
     final params = {
@@ -109,9 +115,7 @@ class LoginService {
   }
 
   Future<Session> startSession(String userName) async {
-    final A_hex = A.toRadixString(16);
-    final A_bytes = hex.decode(A_hex);
-    final A_base64 = base64.encode(A_bytes);
+    final A_base64 = base64.encode(encodeBigInt(A));
 
     final params = {
       "action": "start_session",
