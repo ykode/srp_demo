@@ -8,12 +8,23 @@ import 'package:crypto/crypto.dart';
 import 'package:http/http.dart' as http;
 import 'package:built_value/standard_json_plugin.dart';
 import 'package:built_value/serializer.dart';
+import 'package:logging/logging.dart';
 
 import 'data_model.dart';
 import 'serializers.dart';
 
-const _N_HEX =
-    'bde5c829e8d1fe9dd851b3e7c63ba358ddde329b989a0049ab006aadd80aace8e3ffc282d894b5725f2d72d5d98743fcf1a9c02c60b2edbdea7b0328d8d3655ed9b182be6c5b03b5c84b7534404d9a65d6e649df5a28f52aef353ca54a453014fb37ae8f97c1929b012b16ea21a01adddfc4ba05bcc74e8f9a50e422580dfbcb';
+final Uint8List _N_BYTES = Uint8List.fromList([
+    0xBD, 0xE5, 0xC8, 0x29, 0xE8, 0xD1, 0xFE, 0x9D, 0xD8, 0x51, 0xB3, 0xE7,
+		0xC6, 0x3B, 0xA3, 0x58, 0xDD, 0xDE, 0x32, 0x9B, 0x98, 0x9A, 0x00, 0x49,
+		0xAB, 0x00, 0x6A, 0xAD, 0xD8, 0x0A, 0xAC, 0xE8, 0xE3, 0xFF, 0xC2, 0x82,
+		0xD8, 0x94, 0xB5, 0x72, 0x5F, 0x2D, 0x72, 0xD5, 0xD9, 0x87, 0x43, 0xFC,
+		0xF1, 0xA9, 0xC0, 0x2C, 0x60, 0xB2, 0xED, 0xBD, 0xEA, 0x7B, 0x03, 0x28,
+		0xD8, 0xD3, 0x65, 0x5E, 0xD9, 0xB1, 0x82, 0xBE, 0x6C, 0x5B, 0x03, 0xB5,
+		0xC8, 0x4B, 0x75, 0x34, 0x40, 0x4D, 0x9A, 0x65, 0xD6, 0xE6, 0x49, 0xDF,
+		0x5A, 0x28, 0xF5, 0x2A, 0xEF, 0x35, 0x3C, 0xA5, 0x4A, 0x45, 0x30, 0x14,
+		0xFB, 0x37, 0xAE, 0x8F, 0x97, 0xC1, 0x92, 0x9B, 0x01, 0x2B, 0x16, 0xEA,
+		0x21, 0xA0, 0x1A, 0xDD, 0xDF, 0xC4, 0xBA, 0x05, 0xBC, 0xC7, 0x4E, 0x8F,
+		0x9A, 0x50, 0xE4, 0x22, 0x58, 0x0D, 0xFB, 0xCB]); 
 const keyinfo = "SRP Demo Key Information";
 
 final _bigIntFF = new BigInt.from(0xff);
@@ -49,7 +60,7 @@ BigInt modPow(BigInt b, BigInt e, BigInt m) => e < BigInt.one
     : (b < BigInt.zero || b > m ? (b % m) : b).modPow(e, m);
 
 class LoginService {
-  static final _N = BigInt.parse(_N_HEX, radix: 16);
+  static final _N = decodeBigInt(_N_BYTES);
   static final g = BigInt.two;
   static const _MAX_RANDOM_BIT_LENGTH = 1024;
   static final secureRandom = new Random.secure();
@@ -65,6 +76,8 @@ class LoginService {
 
   BigInt B;
 
+  final Logger _log = new Logger('LoginService');
+
   LoginService._init(this.k, this.a, this.A, this._infoBits);
 
   static List<int> randomBytes(int length) =>
@@ -75,7 +88,7 @@ class LoginService {
 
   factory LoginService() {
     final hmacSha256 = new Hmac(sha256, [2]);
-    final kDigest = hmacSha256.convert(hex.decode(_N_HEX));
+    final kDigest = hmacSha256.convert(_N_BYTES);
     final kBytes = kDigest.bytes;
     final a = randomBigInt(_MAX_RANDOM_BIT_LENGTH);
     final A = modPow(g, a, _N);
@@ -89,7 +102,8 @@ class LoginService {
   Future<Null> registerUser(String userName, String password) async {
     final salt = randomBytes(16);
     final hmacSha256 = new Hmac(sha256, salt);
-    final xBytes = hmacSha256.convert(salt).bytes;
+    final identity = utf8.encode("$userName:$password");
+    final xBytes = hmacSha256.convert(identity).bytes;
     final x = decodeBigInt(xBytes);
     final v = modPow(g, x, _N);
     final vBase64 = base64.encode(encodeBigInt(v));
@@ -100,6 +114,9 @@ class LoginService {
       "v": vBase64,
       "salt": saltBase64,
     };
+
+    print(params);
+    print(base64.encode(xBytes));
 
     final uri = Uri.parse("http://localhost:4000/identities/");
 
@@ -122,6 +139,8 @@ class LoginService {
       "user_name": userName,
       "A": A_base64,
     };
+
+    print(params);
 
     final uri = Uri.parse("http://localhost:4000/sessions/");
 

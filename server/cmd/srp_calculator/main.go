@@ -11,6 +11,7 @@ import (
 	"io"
 	"math/big"
 	"os"
+	"strings"
 )
 
 var (
@@ -83,9 +84,15 @@ func main() {
 
 	fmt.Print("Username:")
 	username, _ := reader.ReadString('\n')
+	username = strings.TrimRight(username, "\n")
 
 	fmt.Print("Password:")
 	password, _ := reader.ReadString('\n')
+	password = strings.TrimRight(password, "\n")
+
+	identity := fmt.Sprintf("%s:%s", username, password)
+
+	fmt.Printf("Identity '%s'\n", identity)
 
 	a, _ := cryptrand(128)
 	A := new(big.Int).Exp(g, a, N)
@@ -95,10 +102,14 @@ func main() {
 	fmt.Print("Salt: ")
 	saltStr, _ := reader.ReadString('\n')
 	saltBytes, _ := base64.StdEncoding.DecodeString(saltStr)
-	x := new(big.Int).SetBytes(calculateHash(saltBytes, []byte(username+":"+password)))
+	xBytes := calculateHash(saltBytes, []byte(identity))
+	x := new(big.Int).SetBytes(xBytes)
 	v := new(big.Int).Exp(g, x, N)
 
-	fmt.Printf("v = 0x%x\nv (base64): %s\n", v, base64.StdEncoding.EncodeToString(v.Bytes()))
+	fmt.Printf("x = 0x%x\nx (base64): %s\nv = 0x%x\nv (base64): %s\nsalt (base64): %s\n",
+		x, base64.StdEncoding.EncodeToString(xBytes),
+		v, base64.StdEncoding.EncodeToString(v.Bytes()),
+		base64.StdEncoding.EncodeToString(saltBytes))
 
 	fmt.Print("B: ")
 	BStr, _ := reader.ReadString('\n')

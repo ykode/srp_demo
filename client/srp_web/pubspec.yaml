@@ -16,6 +16,7 @@ dependencies:
   crypto: ^2.0.1
   convert: ^2.0.2
   built_value: ^6.1.5
+  logging: ^0.11.3+2
   ng_bootstrap: any
 
 dev_dependencies:

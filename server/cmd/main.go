@@ -17,6 +17,7 @@ func main() {
 
 	e.Use(middleware.Logger())
 	e.Use(middleware.Recover())
+	e.Use(middleware.CORS())
 	s, err := storage.NewPostgreSQLStorage("localhost", "postgres", "", "srp_demo", 5432, storage.SSLDisable)
 
 	if err != nil {
