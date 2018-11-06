@@ -86,7 +86,7 @@ class _$ChallengeAnswerSerializer
   Iterable serialize(Serializers serializers, ChallengeAnswer object,
       {FullType specifiedType = FullType.unspecified}) {
     final result = <Object>[
-      'sessionId',
+      'session_id',
       serializers.serialize(object.sessionId,
           specifiedType: const FullType(String)),
       'M_s',
@@ -107,7 +107,7 @@ class _$ChallengeAnswerSerializer
       iterator.moveNext();
       final dynamic value = iterator.current;
       switch (key) {
-        case 'sessionId':
+        case 'session_id':
           result.sessionId = serializers.deserialize(value,
               specifiedType: const FullType(String)) as String;
           break;

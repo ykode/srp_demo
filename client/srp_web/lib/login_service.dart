@@ -150,14 +150,15 @@ class LoginService {
     request.bodyFields = params;
 
     final response = await _client.send(request);
-    final decodeMap = await response.stream
-        .transform(utf8.decoder)
-        .transform(json.decoder)
-        .cast<Map<String, dynamic>>()
-        .single;
-    if (201 != response.statusCode) {
+       if (201 != response.statusCode) {
       throw new HttpException("Cannot start session", uri: uri);
     } else {
+      final decodeMap = await response.stream
+          .transform(utf8.decoder)
+          .transform(json.decoder)
+          .cast<Map<String, dynamic>>()
+          .single;
+
       return _serializers.deserialize(decodeMap,
           specifiedType: const FullType(Session));
     }
@@ -182,15 +183,16 @@ class LoginService {
     request.bodyFields = params;
 
     final response = await _client.send(request);
-    final decodeMap = await response.stream
-        .transform(utf8.decoder)
-        .transform(json.decoder)
-        .cast<Map<String, dynamic>>()
-        .single;
-
+    
     if (200 != response.statusCode) {
       throw new HttpException("Unauthorized", uri:uri);
     } else {
+      final decodeMap = await response.stream
+          .transform(utf8.decoder)
+          .transform(json.decoder)
+          .cast<Map<String, dynamic>>()
+          .single;
+
       return _serializers.deserialize(decodeMap,
           specifiedType: const FullType(ChallengeAnswer));
     }

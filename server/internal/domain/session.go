@@ -39,13 +39,12 @@ func hkdfFromKey(salt []byte, ikm []byte, iteration int) [][]byte {
 	fmt.Printf("Extractor: %s\n", base64.StdEncoding.EncodeToString(extractor))
 
 	hkdf := hkdf.New(sha256.New, ikm, salt, []byte(keyinfo))
-	okm := make([]byte, 16)
 	out := make([][]byte, iteration)
 
 	for i := 0; i < iteration; i += 1 {
-		io.ReadFull(hkdf, okm)
-		fmt.Printf("K[%d]: 0x%x\n", i, new(big.Int).SetBytes(okm))
-		out[i] = okm
+		out[i] = make([]byte, 16)
+		io.ReadFull(hkdf, out[i])
+		fmt.Printf("K[%d]: 0x%x\n", i, new(big.Int).SetBytes(out[i]))
 	}
 
 	return out
@@ -158,14 +157,19 @@ func (s *Session) GenerateKey(A *big.Int) error {
 
 func (s *Session) VerifyClient(M1_c *big.Int) (*big.Int, bool) {
 
+	fmt.Println(">>>>>>>>")
+	for i := 0; i < len(s.keys); i += 1 {
+		fmt.Printf("k[%d] = 0x%x\n", i, s.keys[i])
+	}
+
 	M1_s := calculateHashBigInt(s.keys[0], new(big.Int).Exp(s._A, s._B, N))
-	/*
-		fmt.Printf("v: 0x%x\nA:%s\nB:%s\nS_s: 0x%x\nK1_s: 0x%x\nM1_s: %s",
-			s.v,
-			base64.StdEncoding.EncodeToString(s._A.Bytes()),
-			base64.StdEncoding.EncodeToString(s._B.Bytes()),
-			s.masterKey, s.keys[0], base64.StdEncoding.EncodeToString(M1_s.Bytes()))
-	*/
+
+	fmt.Printf("v: 0x%x\nA:%x\nB:%x\nS_s: 0x%x\nK1_s: 0x%x\nM1_s: %s\n",
+		s.v,
+		s._A,
+		s._B,
+		s.masterKey, s.keys[0], base64.StdEncoding.EncodeToString(M1_s.Bytes()))
+
 	if eq := M1_s.Cmp(M1_c) == 0; !eq {
 		return nil, false
 	} else {

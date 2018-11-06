@@ -5,6 +5,8 @@ import 'package:angular_forms/angular_forms.dart';
 import 'package:convert/convert.dart';
 import 'package:crypto/crypto.dart';
 import 'dart:convert';
+import 'dart:html';
+import 'dart:io';
 
 
 import 'login_service.dart';
@@ -47,6 +49,8 @@ class AppComponent {
 
     final B_bytes = base64.decode(session.B);
     final B = decodeBigInt(B_bytes);
+    final A = _loginService.A;
+    final N = LoginService.N;
     final salt = base64.decode(session.salt);
 
     final u = decodeBigInt(hasher.convert(B_bytes).bytes);
@@ -57,20 +61,43 @@ class AppComponent {
     final x = decodeBigInt(xBytes);
 
 
-    final S_c = modPow(B - _loginService.k * modPow(BigInt.two, x, LoginService.N), 
+    final S_c = modPow(B - _loginService.k * modPow(BigInt.two, x, N), 
         _loginService.a + u * x, LoginService.N);
 
-    print(S_c.toRadixString(16));
+    print("S_c: ${S_c.toRadixString(16)}");
 
     final K_c_bytes = computeHKDF(encodeBigInt(S_c), encodeBigInt(u));
     final K_c = decodeBigInt(K_c_bytes);
 
-    print(K_c.toRadixString(16));
+    print("K_c ${K_c.toRadixString(16)}");
     final hasher_M = new Hmac(sha256, K_c_bytes);
-    final M1_c_bytes = hasher_M.convert(encodeBigInt(modPow(_loginService.A, B, LoginService.N))).bytes;
+    final M1_c_bytes = hasher_M.convert(encodeBigInt(modPow(A, B, N))).bytes;
+    final M1_c = decodeBigInt(M1_c_bytes);
 
-    final answer = await _loginService.answerChallenge(session, decodeBigInt(M1_c_bytes));
+    print("A: ${A.toRadixString(16)}\n B: ${B.toRadixString(16)}\n");
 
-    print (answer);
+    try {
+      final answer = await _loginService.answerChallenge(session, decodeBigInt(M1_c_bytes));
+  
+      print (answer);
+
+      final M2_s_bytes = base64.decode(answer.M2);
+      final M2_s = decodeBigInt(M2_s_bytes);
+    
+      final M2_c_bytes = hasher_M.convert(encodeBigInt(modPow(A, M1_c, N))).bytes;
+      final M2_c = decodeBigInt(M2_c_bytes);
+
+      if (M2_s == M2_c) {
+        window.alert("Authorised!");
+      } else {
+        window.alert("Unauthorised!");
+      }
+    } catch (e) {
+      if (e is HttpException) {
+        window.alert(e.message);
+      } else {
+        throw e;
+      }
+    }
   } 
 }

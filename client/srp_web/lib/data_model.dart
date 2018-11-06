@@ -23,7 +23,7 @@ abstract class Session implements Built<Session, SessionBuilder> {
 abstract class ChallengeAnswer implements Built<ChallengeAnswer, ChallengeAnswerBuilder> {
   static Serializer<ChallengeAnswer> get serializer => _$challengeAnswerSerializer;
 
-  @BuiltValueField(wireName: 'sessionId')
+  @BuiltValueField(wireName: 'session_id')
   String get sessionId;
 
   @BuiltValueField(wireName: 'M_s')
