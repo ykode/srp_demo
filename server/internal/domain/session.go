@@ -142,9 +142,7 @@ func (s *Session) GenerateKey(A *big.Int) error {
 	B := s._B
 	u := calculateHashBigInt(A, B)
 	S_s := new(big.Int).Exp(new(big.Int).Mul(A, new(big.Int).Exp(s.v, u, N)), s.b, N)
-	fmt.Printf("S_s: 0x%x\n", S_s)
 	s.masterKey = S_s.Bytes()
-
 	keys := hkdfFromKey(u.Bytes(), s.masterKey, len(s.keys))
 
 	for i := 0; i < len(s.keys); i += 1 {
@@ -152,6 +150,14 @@ func (s *Session) GenerateKey(A *big.Int) error {
 	}
 
 	s._A = A
+
+	fmt.Printf("v: 0x%x\nA:%x\nB:%x\nu:0x%x\nS_s: 0x%x\n",
+		s.v,
+		s._A,
+		s._B,
+		u,
+		s.masterKey)
+
 	return nil
 }
 

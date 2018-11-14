@@ -65,13 +65,13 @@ func mustCryptRand(length int) *big.Int {
 }
 
 func hkdfFromKey(salt []byte, ikm []byte, iteration int) [][]byte {
+
 	hkdf := hkdf.New(sha256.New, ikm, salt, []byte(keyinfo))
-	okm := make([]byte, 16)
 	out := make([][]byte, iteration)
 
 	for i := 0; i < iteration; i += 1 {
-		io.ReadFull(hkdf, okm)
-		out[i] = okm
+		out[i] = make([]byte, 16)
+		io.ReadFull(hkdf, out[i])
 	}
 
 	return out
