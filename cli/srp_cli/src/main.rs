@@ -1,5 +1,6 @@
 extern crate num_bigint;
 extern crate num_traits;
+extern crate num_integer;
 extern crate base64;
 extern crate rand;
 extern crate hkdf;

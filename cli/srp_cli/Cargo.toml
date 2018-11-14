@@ -9,7 +9,6 @@ num-bigint = { version= "0.2", features = ["rand"]}
 num-traits = "0.2"
 num-integer = "0.1"
 hkdf = "0.7"
-digest = "0.8.0"
 rand = "0.5.5"
 base64 = "0.10.0"
 hmac = "0.7"
