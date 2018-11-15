@@ -1,19 +1,19 @@
-extern crate num_bigint;
-extern crate num_traits;
-extern crate num_integer;
 extern crate base64;
-extern crate rand;
 extern crate hkdf;
+extern crate num_bigint;
+extern crate num_integer;
+extern crate num_traits;
+extern crate rand;
 
+use hkdf::Hkdf;
+use hmac::{Hmac, Mac};
+use num_bigint::{BigInt, RandBigInt, Sign, ToBigInt};
+use num_integer::Integer;
+use num_traits::sign::Signed;
+use rand::rngs::OsRng;
+use sha2::Sha256;
 use std::io;
 use std::io::Write;
-use rand::rngs::OsRng;
-use num_bigint::{BigInt, ToBigInt, RandBigInt, Sign};
-use num_traits::sign::Signed;
-use num_integer::Integer;
-use sha2::Sha256;
-use hmac::{Hmac, Mac};
-use hkdf::Hkdf;
 
 type HmacSha256 = Hmac<Sha256>;
 
@@ -25,14 +25,11 @@ trait PositiveModPow {
 #[allow(non_snake_case)]
 impl PositiveModPow for BigInt {
     fn pos_mod_pow(&self, exp: &BigInt, N: &BigInt) -> BigInt {
-        let x: BigInt = 
-            if self.is_negative() {
-                self.clone()
-            } else {
-                self.mod_floor(&N)
-            };
-
-        return x.modpow(&exp, &N);
+        if !self.is_negative() {
+            self.modpow(&exp, &N)
+        } else {
+            self.mod_floor(&N).modpow(&exp, &N)
+        }
     }
 }
 
@@ -51,9 +48,7 @@ static _N_BYTES: &[u8] = &[
 const RNG_BIT_LEN: usize = 1024;
 const KEY_INFO: &str = "SRP Demo Key Information";
 
-
 fn main() {
-
     let g = 2.to_bigint().unwrap();
 
     #[allow(non_snake_case)]
@@ -62,16 +57,18 @@ fn main() {
     let reader = io::stdin();
     let mut out = io::stdout();
 
-    println!("N (base64) : {}", base64::encode(&_N_BYTES)); 
+    println!("N (base64) : {}", base64::encode(&_N_BYTES));
     out.write("Enter Username: ".as_bytes()).unwrap();
 
     let mut input = String::new();
-    input.clear(); out.flush().unwrap();
+    input.clear();
+    out.flush().unwrap();
     reader.read_line(&mut input).unwrap();
-    let username = input.trim().to_string();    
+    let username = input.trim().to_string();
 
     out.write("Enter Password: ".as_bytes()).unwrap();
-    input.clear(); out.flush().unwrap();
+    input.clear();
+    out.flush().unwrap();
     reader.read_line(&mut input).unwrap();
     let password = input.trim().to_string();
 
@@ -83,33 +80,39 @@ fn main() {
 
     let a = rng.gen_biguint(RNG_BIT_LEN).to_bigint().unwrap();
 
-    #[allow(non_snake_case)]    
+    #[allow(non_snake_case)]
     let A = g.pos_mod_pow(&a, &N);
 
-    println!("a (hex) : {}\nA (hex) : {}\nA (base64) : {}", 
-             a.to_str_radix(16),
-             A.to_str_radix(16), 
-             base64::encode(&A.to_bytes_be().1));
+    println!(
+        "a (hex) : {}\nA (hex) : {}\nA (base64) : {}",
+        a.to_str_radix(16),
+        A.to_str_radix(16),
+        base64::encode(&A.to_bytes_be().1)
+    );
 
     out.write("Enter Salt: ".as_bytes()).unwrap();
-    input.clear(); out.flush().unwrap();
+    input.clear();
+    out.flush().unwrap();
     reader.read_line(&mut input).unwrap();
     let salt_str = input.trim().to_string();
     let salt_bytes = base64::decode(&salt_str).unwrap();
 
     let mut mac = HmacSha256::new_varkey(&salt_bytes).unwrap();
     mac.input(&identity.as_bytes());
-    let x = BigInt::from_bytes_be(Sign::Plus, &mac.result().code()); 
+    let x = BigInt::from_bytes_be(Sign::Plus, &mac.result().code());
     let v = g.pos_mod_pow(&x, &N);
 
-    println!("v (hex) : {}\nv (base64): {}",
+    println!(
+        "v (hex) : {}\nv (base64): {}",
         v.to_str_radix(16),
-        base64::encode(&v.to_bytes_be().1));
+        base64::encode(&v.to_bytes_be().1)
+    );
 
     out.write("B: ".as_bytes()).unwrap();
-    input.clear(); out.flush().unwrap();
+    input.clear();
+    out.flush().unwrap();
     reader.read_line(&mut input).unwrap();
-    
+
     #[allow(non_snake_case)]
     let B_str = input.trim().to_string();
     #[allow(non_snake_case)]
@@ -125,9 +128,9 @@ fn main() {
     mac.input(&_N_BYTES);
     let k = BigInt::from_bytes_be(Sign::Plus, &mac.result().code());
 
-    #[allow(non_snake_case)]    
+    #[allow(non_snake_case)]
     let S_c = (&B - &k * &g.pos_mod_pow(&x, &N)).pos_mod_pow(&(&a + &u * &x), &N);
-    let mut okm = [0u8;16];
+    let mut okm = [0u8; 16];
     let hk = Hkdf::<Sha256>::extract(Some(&u.to_bytes_be().1[..]), &S_c.to_bytes_be().1[..]);
     hk.expand(&KEY_INFO.as_bytes(), &mut okm).unwrap();
     let k1 = BigInt::from_bytes_be(Sign::Plus, &okm[..]);
@@ -135,12 +138,11 @@ fn main() {
     let mut mac = HmacSha256::new_varkey(&okm[..]).unwrap();
     mac.input(&A.pos_mod_pow(&B, &N).to_bytes_be().1);
 
-    #[allow(non_snake_case)]    
+    #[allow(non_snake_case)]
     let M_1_bytes = mac.result().code();
 
-    #[allow(non_snake_case)]    
+    #[allow(non_snake_case)]
     let M_1 = BigInt::from_bytes_be(Sign::Plus, &M_1_bytes);
-
 
     println!("B (hex): {}\nu: (hex): {}\nS_c (hex): {}\nS_c (base64): {}\nk1 (hex): {}\nM1 (hex): {}\nM1 (base64): {}",
         B.to_str_radix(16),
@@ -152,13 +154,13 @@ fn main() {
         base64::encode(&M_1_bytes));
 
     out.write("M2: ".as_bytes()).unwrap();
-    input.clear(); out.flush().unwrap();
+    input.clear();
+    out.flush().unwrap();
     reader.read_line(&mut input).unwrap();
 
-
-    #[allow(non_snake_case)]    
+    #[allow(non_snake_case)]
     let M_2_s_str = input.trim().to_string();
-    #[allow(non_snake_case)]    
+    #[allow(non_snake_case)]
     let M_2_s_bytes = base64::decode(&M_2_s_str).unwrap();
     #[allow(non_snake_case)]
     let M_2_s = BigInt::from_bytes_be(Sign::Plus, &M_2_s_bytes);
@@ -167,11 +169,10 @@ fn main() {
     mac.reset();
     mac.input(&A.pos_mod_pow(&M_1, &N).to_bytes_be().1);
 
-
-    #[allow(non_snake_case)]    
+    #[allow(non_snake_case)]
     let M_2_c_bytes = mac.result().code();
 
-    #[allow(non_snake_case)]    
+    #[allow(non_snake_case)]
     let M_2_c = BigInt::from_bytes_be(Sign::Plus, &M_2_c_bytes);
 
     if &M_2_s == &M_2_c {
